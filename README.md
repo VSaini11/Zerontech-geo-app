@@ -4,9 +4,10 @@ Automatic geofenced attendance (Flutter app + Node/Express server) rebuilt so it
 after the phone has been closed for days.
 
 - `docs/ROOT_CAUSES.md`: the exact failure causes, how to confirm each, how they are fixed
+- `DEPLOY_TASKS.md`: production deployment roadmap (Catalyst Data Store, AppSail Docker, FCM notifications)
 - `server/`: drop-in server, same AppSail + same database collections (`DEPLOY_CATALYST.md`)
 - `app/`: Flutter app. Admin: 5 tabs (Status, Locations, Employees, Calendar, Profile).
-  Employee: 3 tabs (Status, Calendar, Profile).
+  Employee: 2 tabs (Status, Profile).
 
 ## How it works in one paragraph
 The phone only reports **facts**: "the OS says I crossed site X" and "my position is here".

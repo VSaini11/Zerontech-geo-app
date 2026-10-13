@@ -3,6 +3,7 @@ import '../../core/theme.dart';
 import '../../data/api.dart';
 import '../../data/models.dart';
 import '../common/widgets.dart';
+import 'report_export_screen.dart';
 
 class EmployeesTab extends StatefulWidget {
   const EmployeesTab({super.key});
@@ -141,14 +142,44 @@ class _EmployeesTabState extends State<EmployeesTab> {
           for (final e in _list)
             Card(
               child: ListTile(
-                leading: CircleAvatar(child: Text(e.name.isEmpty ? '?' : e.name[0].toUpperCase())),
-                title: Text(e.name, style: const TextStyle(fontWeight: FontWeight.w700)),
-                subtitle: Text('${e.role} · ${e.sites.isEmpty ? 'no sites' : e.sites.map((s) => s['name']).join(', ')}'),
+                leading: CircleAvatar(
+                  backgroundColor: e.role == 'admin' ? kBrandLight : const Color(0xFFF1F5F9),
+                  child: Text(
+                    e.name.isEmpty ? '?' : e.name[0].toUpperCase(),
+                    style: TextStyle(fontWeight: FontWeight.w800, color: e.role == 'admin' ? kBrand : kSlateDark),
+                  ),
+                ),
+                title: Text(e.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                subtitle: Text('${e.role.toUpperCase()} · ${e.sites.isEmpty ? 'No sites assigned' : e.sites.map((s) => s['name']).join(', ')}', style: const TextStyle(fontSize: 12, color: kSlate)),
                 trailing: e.role == 'admin'
                     ? null
                     : PopupMenuButton<String>(
-                        onSelected: (v) => {'sites': _sitesDialog, 'pw': _reset, 'del': _delete}[v]!(e),
-                        itemBuilder: (_) => const [PopupMenuItem(value: 'sites', child: Text('Assign sites')), PopupMenuItem(value: 'pw', child: Text('Reset password')), PopupMenuItem(value: 'del', child: Text('Delete'))],
+                        onSelected: (v) {
+                          if (v == 'export') {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ReportExportScreen(
+                                  initialUser: e.name,
+                                  employeeNames: [e.name],
+                                ),
+                              ),
+                            );
+                          } else if (v == 'sites') {
+                            _sitesDialog(e);
+                          } else if (v == 'pw') {
+                            _reset(e);
+                          } else if (v == 'del') {
+                            _delete(e);
+                          }
+                        },
+                        itemBuilder: (_) => const [
+                          PopupMenuItem(value: 'export', child: Row(children: [Icon(Icons.file_download, size: 18, color: kGreen), SizedBox(width: 8), Text('Export Attendance')])),
+                          PopupMenuItem(value: 'sites', child: Row(children: [Icon(Icons.place_outlined, size: 18), SizedBox(width: 8), Text('Assign sites')])),
+                          PopupMenuItem(value: 'pw', child: Row(children: [Icon(Icons.lock_reset, size: 18), SizedBox(width: 8), Text('Reset password')])),
+                          PopupMenuDivider(),
+                          PopupMenuItem(value: 'del', child: Row(children: [Icon(Icons.delete_outline, size: 18, color: kRed), SizedBox(width: 8), Text('Delete employee', style: TextStyle(color: kRed))])),
+                        ],
                       ),
               ),
             ),

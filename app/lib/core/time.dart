@@ -25,14 +25,16 @@ String ym(DateTime d) => '${d.year}-${two(d.month)}';
 String reasonLabel(String? r) {
   switch (r) {
     case 'outside_radius':
-      return 'Left the site';
+      return 'Exited geofence radius';
     case 'inferred_exit':
-      return 'Exit estimated (no signal)';
+      return 'Estimated exit (Signal lost / phone off)';
     case 'auto_close':
-      return 'Closed after 16 h limit';
+      return 'Auto-closed after 16h limit';
     case 'manual':
-      return 'Added by admin';
+      return 'Admin manual adjustment';
+    case 'perm_lost':
+      return 'Location / GPS turned off';
     default:
-      return 'In progress';
+      return 'Active session';
   }
 }

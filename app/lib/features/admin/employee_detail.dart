@@ -8,6 +8,8 @@ import '../../data/api.dart';
 import '../../data/models.dart';
 import '../common/widgets.dart';
 
+import 'report_export_screen.dart';
+
 class EmployeeDetail extends StatefulWidget {
   final String name;
   const EmployeeDetail({super.key, required this.name});
@@ -81,44 +83,211 @@ class _EmployeeDetailState extends State<EmployeeDetail> {
     final today = d == null ? null : DayView.fromJson(Map<String, dynamic>.from(d['today']));
     final k = d?['user']?['lastKnownLocation'] as Map?;
     final pos = k == null ? null : LatLng((k['latitude'] as num).toDouble(), (k['longitude'] as num).toDouble());
+    final accuracy = k == null ? null : (k['accuracy'] as num?)?.toDouble() ?? 15.0;
+    final updatedAt = k == null ? null : (k['updatedAt'] as num?)?.toInt();
     final center = pos ?? (_sites.isNotEmpty ? LatLng(_sites.first.latitude, _sites.first.longitude) : const LatLng(20.5937, 78.9629));
+
+    // Determine if signal is active or last-synced fallback
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final isRecent = updatedAt != null && (now - updatedAt) < 45 * 60 * 1000; // <45 mins
+
     return Scaffold(
-      appBar: AppBar(title: Text(widget.name, style: const TextStyle(fontWeight: FontWeight.w800))),
+      appBar: AppBar(
+        title: Text(widget.name, style: const TextStyle(fontWeight: FontWeight.w800)),
+        actions: [
+          IconButton(
+            tooltip: 'Export Employee Attendance',
+            icon: const Icon(Icons.file_download, color: kBrand),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ReportExportScreen(
+                    initialUser: widget.name,
+                    employeeNames: [widget.name],
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(onPressed: _addManual, icon: const Icon(Icons.add), label: const Text('Add time')),
       body: d == null
           ? Center(child: _err == null ? const CircularProgressIndicator() : Text(_err!, style: const TextStyle(color: kRed)))
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView(padding: const EdgeInsets.all(16), children: [
-                SizedBox(
-                  height: 240,
+                // Map Container with clear Pin, GPS Accuracy radius and status badge
+                Card(
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
-                    child: FlutterMap(
-                      options: MapOptions(initialCenter: center, initialZoom: 15),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', userAgentPackageName: kPackageForMapTiles),
-                        CircleLayer(circles: [for (final s in _sites) CircleMarker(point: LatLng(s.latitude, s.longitude), radius: s.radiusMeters, useRadiusInMeter: true, color: kBrand.withValues(alpha: 0.15), borderColor: kBrand, borderStrokeWidth: 2)]),
-                        if (pos != null) MarkerLayer(markers: [Marker(point: pos, width: 40, height: 40, child: const Icon(Icons.person_pin_circle, color: kRed, size: 40))]),
-                        const RichAttributionWidget(attributions: [TextSourceAttribution('OpenStreetMap contributors')]),
+                        SizedBox(
+                          height: 280,
+                          child: Stack(
+                            children: [
+                              FlutterMap(
+                                options: MapOptions(initialCenter: center, initialZoom: pos != null ? 16 : 14),
+                                children: [
+                                  TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', userAgentPackageName: kPackageForMapTiles),
+                                  // Geofence Work Sites
+                                  CircleLayer(circles: [
+                                    for (final s in _sites)
+                                      CircleMarker(
+                                        point: LatLng(s.latitude, s.longitude),
+                                        radius: s.radiusMeters,
+                                        useRadiusInMeter: true,
+                                        color: kBrand.withValues(alpha: 0.12),
+                                        borderColor: kBrand,
+                                        borderStrokeWidth: 2,
+                                      ),
+                                    // GPS accuracy circle around employee's exact pin
+                                    if (pos != null && accuracy != null)
+                                      CircleMarker(
+                                        point: pos,
+                                        radius: accuracy,
+                                        useRadiusInMeter: true,
+                                        color: (isRecent ? kGreen : kAmber).withValues(alpha: 0.18),
+                                        borderColor: isRecent ? kGreen : kAmber,
+                                        borderStrokeWidth: 1.5,
+                                      ),
+                                  ]),
+                                  // Work Site Markers & Employee Pin
+                                  MarkerLayer(markers: [
+                                    for (final s in _sites)
+                                      Marker(
+                                        point: LatLng(s.latitude, s.longitude),
+                                        width: 36,
+                                        height: 36,
+                                        child: const Icon(Icons.apartment_rounded, color: kBrand, size: 30),
+                                      ),
+                                    if (pos != null)
+                                      Marker(
+                                        point: pos,
+                                        width: 50,
+                                        height: 50,
+                                        child: Column(
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.all(4),
+                                              decoration: BoxDecoration(
+                                                color: isRecent ? kGreen : kAmber,
+                                                shape: BoxShape.circle,
+                                                boxShadow: [
+                                                  BoxShadow(color: Colors.black.withValues(alpha: 0.25), blurRadius: 6, offset: const Offset(0, 3)),
+                                                ],
+                                              ),
+                                              child: const Icon(Icons.person, color: Colors.white, size: 20),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                  ]),
+                                  const RichAttributionWidget(attributions: [TextSourceAttribution('OpenStreetMap contributors')]),
+                                ],
+                              ),
+                              // Floating Status Pill on Map
+                              Positioned(
+                                top: 12,
+                                left: 12,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(20),
+                                    boxShadow: [
+                                      BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 6, offset: const Offset(0, 2)),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        pos != null
+                                            ? (isRecent ? Icons.my_location : Icons.location_history)
+                                            : Icons.location_disabled,
+                                        size: 15,
+                                        color: pos != null ? (isRecent ? kGreen : kAmber) : kRed,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        pos != null
+                                            ? (isRecent ? 'Live Location' : 'Last Synced Location')
+                                            : 'No Location Data',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w800,
+                                          color: pos != null ? (isRecent ? kGreen : kAmber) : kRed,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Location details footer
+                        Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Row(
+                            children: [
+                              Icon(Icons.info_outline, size: 16, color: kSlate),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  pos != null
+                                      ? (isRecent
+                                          ? 'Device synced at ${fmtTime(updatedAt!)} (GPS ±${accuracy?.round()}m precision)'
+                                          : 'Signal paused. Showing last known synced position from ${fmtTime(updatedAt!)} (±${accuracy?.round()}m)')
+                                      : 'No position recorded yet. Employee needs to open app and allow location.',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: isRecent ? kSlate : kAmber,
+                                    fontWeight: isRecent ? FontWeight.normal : FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
                 ),
-                if (k != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text('Last position ${fmtTime((k['updatedAt'] as num).toInt())} · ±${((k['accuracy'] ?? 0) as num).round()} m', style: const TextStyle(color: kSlate, fontSize: 12))),
                 const SizedBox(height: 8),
                 Card(
                   child: Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                      Text(fmtHm(today!.totalMinutes), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
-                      Text('${today.checkInCount} visits · ${today.status}', style: const TextStyle(color: kSlate)),
-                    ]),
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Today\'s Worked Hours', style: TextStyle(fontSize: 12, color: kSlate, fontWeight: FontWeight.w600)),
+                            const SizedBox(height: 4),
+                            Text(fmtHm(today!.totalMinutes), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: kSlateDark)),
+                          ],
+                        ),
+                        AttendanceBadge(today.status),
+                      ],
+                    ),
                   ),
                 ),
                 sectionTitle("Today's visits (long-press to remove)"),
-                if (today.sessions.isEmpty) const Text('Nothing recorded.', style: TextStyle(color: kSlate)),
+                if (today.sessions.isEmpty)
+                  const Card(
+                    child: Padding(
+                      padding: EdgeInsets.all(20),
+                      child: Center(child: Text('No attendance punches recorded yet today.', style: TextStyle(color: kSlate))),
+                    ),
+                  ),
                 for (final s in today.sessions) VisitTile(s, onLongPress: s.open ? null : () => _adjust('void', s.start, s.end, locationId: s.locationId)),
+                const SizedBox(height: 60),
               ]),
             ),
     );

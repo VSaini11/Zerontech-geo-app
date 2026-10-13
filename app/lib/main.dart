@@ -7,6 +7,11 @@ import 'state/app_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    debugPrint('*** FLUTTER ERROR CAUGHT ***: ${details.exceptionAsString()}');
+    debugPrint(details.stack.toString());
+  };
   await Notifier.init();
   await Scheduler.init(callbackDispatcher);
   final controller = AppController();

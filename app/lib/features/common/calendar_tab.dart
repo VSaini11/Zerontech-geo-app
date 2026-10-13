@@ -75,31 +75,116 @@ class _CalendarTabState extends State<CalendarTab> {
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(padding: const EdgeInsets.all(16), children: [
-        Row(children: [
-          IconButton(onPressed: () => _shift(-1), icon: const Icon(Icons.chevron_left)),
-          Expanded(child: Text('${monthName(_month.month)} ${_month.year}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),
-          IconButton(onPressed: () => _shift(1), icon: const Icon(Icons.chevron_right)),
-        ]),
-        Center(child: Text('Total this month: ${fmtHm(_total)}', style: const TextStyle(color: kSlate))),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                IconButton.filledTonal(
+                  onPressed: () => _shift(-1),
+                  icon: const Icon(Icons.chevron_left, size: 20),
+                  visualDensity: VisualDensity.compact,
+                ),
+                Expanded(
+                  child: Column(
+                    children: [
+                      Text(
+                        '${monthName(_month.month)} ${_month.year}',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: kSlateDark),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Total Worked: ${fmtHm(_total)}',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: kBrand),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton.filledTonal(
+                  onPressed: () => _shift(1),
+                  icon: const Icon(Icons.chevron_right, size: 20),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ],
+            ),
+          ),
+        ),
         const SizedBox(height: 8),
         if (_loading) const LinearProgressIndicator(),
         if (_err != null) Padding(padding: const EdgeInsets.all(8), child: Text(_err!, style: const TextStyle(color: kRed))),
         MonthGrid(month: _month, days: _days, selected: _sel, onSelect: _loadDay),
-        sectionTitle(_sel == null ? 'Day' : _sel!),
+        sectionTitle(_sel == null ? 'Day Summary' : 'Day Summary ($_sel)'),
         if (_day != null) ...[
           Card(
             child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                Text(fmtHm(_day!.totalMinutes), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
-                Text('${_day!.checkInCount} visit${_day!.checkInCount == 1 ? '' : 's'} · ${_day!.status}', style: const TextStyle(color: kSlate)),
-              ]),
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Total Hours', style: TextStyle(fontSize: 12, color: kSlate, fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 4),
+                          Text(fmtHm(_day!.totalMinutes), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: kSlateDark)),
+                        ],
+                      ),
+                      AttendanceBadge(_day!.status),
+                    ],
+                  ),
+                  const Divider(height: 24, color: kBorder),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _DayStat(label: 'Visits', value: '${_day!.checkInCount}'),
+                      _DayStat(label: 'Status', value: _day!.status.toUpperCase()),
+                      _DayStat(label: 'Issues', value: _day!.needsReview ? 'Needs Review' : 'Clean', isWarn: _day!.needsReview),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
-          if (_day!.sessions.isEmpty) const Padding(padding: EdgeInsets.all(16), child: Text('No attendance recorded.', style: TextStyle(color: kSlate))),
+          const SizedBox(height: 8),
+          if (_day!.sessions.isEmpty)
+            const Card(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Center(
+                  child: Column(
+                    children: [
+                      Icon(Icons.event_busy, size: 36, color: kSlate),
+                      SizedBox(height: 8),
+                      Text('No visits recorded on this date.', style: TextStyle(color: kSlate, fontWeight: FontWeight.w500)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           for (final s in _day!.sessions) VisitTile(s),
         ],
       ]),
+    );
+  }
+}
+
+class _DayStat extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool isWarn;
+  const _DayStat({required this.label, required this.value, this.isWarn = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: isWarn ? kAmber : kSlateDark)),
+        const SizedBox(height: 2),
+        Text(label, style: const TextStyle(fontSize: 11, color: kSlate, fontWeight: FontWeight.w500)),
+      ],
     );
   }
 }

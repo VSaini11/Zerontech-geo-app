@@ -177,6 +177,76 @@ class Attendance {
     return items.sort((a, b) => b.start - a.start);
   }
 
+  /**
+   * Detailed attendance report for an optional userName and date range [fromKey, toKey].
+   * Generates day-by-day records for all employees or a single employee.
+   */
+  async report({ userName, fromKey, toKey }) {
+    const tz = this.cfg.tzOffsetMin;
+    const from = dayStart(fromKey, tz);
+    const to = dayStart(addDays(toKey, 1), tz) - 1;
+    const locations = await this.store.listLocations();
+    const locMap = new Map(locations.map((l) => [String(l.id), l.name]));
+    let users = (await this.store.listUsers()).filter((u) => u.role !== 'admin');
+    if (userName && userName.trim()) {
+      users = users.filter((u) => u.name.toLowerCase() === userName.trim().toLowerCase());
+    }
+
+    const records = [];
+    for (const u of users) {
+      const sessions = await this._sessions(u.name, from, to, locations);
+      const sums = summarize(sessions, this.cfg);
+
+      // Generate continuous day entries from fromKey to toKey
+      let cursorKey = fromKey;
+      while (cursorKey <= toKey) {
+        const sum = sums[cursorKey];
+        if (sum && sum.totalMinutes > 0) {
+          const daySessions = sum.sessions || [];
+          const firstIn = daySessions.length > 0 ? daySessions[0].start : null;
+          const lastOut = daySessions.length > 0 ? daySessions[daySessions.length - 1].end : null;
+          const sitesVisited = [...new Set(daySessions.map((s) => s.locationName || locMap.get(String(s.locationId)) || 'Site'))].join(', ');
+
+          records.push({
+            userName: u.name,
+            userId: u.id,
+            date: cursorKey,
+            status: sum.status, // present | partial | absent
+            totalMinutes: sum.totalMinutes,
+            workedHours: (sum.totalMinutes / 60).toFixed(2),
+            checkInCount: sum.checkInCount,
+            firstIn,
+            lastOut,
+            sites: sitesVisited,
+            needsReview: sum.needsReview || false,
+          });
+        } else {
+          records.push({
+            userName: u.name,
+            userId: u.id,
+            date: cursorKey,
+            status: 'absent',
+            totalMinutes: 0,
+            workedHours: '0.00',
+            checkInCount: 0,
+            firstIn: null,
+            lastOut: null,
+            sites: '-',
+            needsReview: false,
+          });
+        }
+        cursorKey = addDays(cursorKey, 1);
+      }
+    }
+
+    return {
+      from: fromKey,
+      to: toKey,
+      totalRecords: records.length,
+      records: records.sort((a, b) => (b.date === a.date ? a.userName.localeCompare(b.userName) : b.date.localeCompare(a.date))),
+    };
+  }
+
   async adjust(admin, b) {
     const now = this.clock();
     const start = Number(b.start);

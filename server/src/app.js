@@ -99,6 +99,13 @@ module.exports = function createApp(store, cfg, clock = () => Date.now()) {
     if (!validKey(from) || !validKey(to)) throw httpError(400, 'from/to must be YYYY-MM-DD');
     res.json({ items: await svc.review(from, to) });
   }));
+  app.get('/api/admin/report', auth, admin, wrap(async (req, res) => {
+    const toKey = req.query.to || dayKey(clock(), cfg.tzOffsetMin);
+    const fromKey = req.query.from || toKey;
+    if (!validKey(fromKey) || !validKey(toKey)) throw httpError(400, 'from and to must be YYYY-MM-DD');
+    const userName = req.query.user || null;
+    res.json(await svc.report({ userName, fromKey, toKey }));
+  }));
   app.post('/api/admin/adjust', auth, admin, wrap(async (req, res) => res.json(await svc.adjust(req.user, req.body || {}))));
   app.get('/api/admin/employee/:name', auth, admin, wrap(async (req, res) => {
     const u = await store.findUserByName(req.params.name);

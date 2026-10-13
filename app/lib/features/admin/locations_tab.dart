@@ -68,13 +68,39 @@ class _LocationsTabState extends State<LocationsTab> {
         const SizedBox(height: 8),
         for (final s in _sites)
           Card(
+            margin: const EdgeInsets.symmetric(vertical: 4),
             child: ListTile(
               onTap: () => _edit(s),
-              leading: const Icon(Icons.business, color: kBrand),
-              title: Text(s.name, style: const TextStyle(fontWeight: FontWeight.w700)),
-              subtitle: Text('Radius ${s.radiusMeters.round()} m · ${s.assigned.isEmpty ? 'nobody assigned' : s.assigned.join(', ')}'),
+              leading: Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(color: kBrandLight, borderRadius: BorderRadius.circular(10)),
+                child: const Icon(Icons.apartment_rounded, color: kBrand, size: 22),
+              ),
+              title: Text(s.name, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+              subtitle: Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(6)),
+                      child: Text('Radius: ${s.radiusMeters.round()}m', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: kSlateDark)),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        s.assigned.isEmpty ? 'No staff assigned' : '${s.assigned.length} assigned (${s.assigned.join(', ')})',
+                        style: const TextStyle(fontSize: 12, color: kSlate),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               trailing: IconButton(
-                icon: const Icon(Icons.delete_outline, color: kRed),
+                icon: const Icon(Icons.delete_outline, color: kRed, size: 20),
                 onPressed: () async {
                   final ok = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(title: Text('Delete ${s.name}?'), actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete'))]));
                   if (ok == true) {
