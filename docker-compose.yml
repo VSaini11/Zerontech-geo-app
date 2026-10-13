@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    image: geo-app-server:latest
+    container_name: geo-app-server
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    environment:
+      - PORT=9000
+      - NODE_ENV=production
+      - JWT_SECRET=your-secure-random-jwt-secret-here
+      - MONGODB_URI=mongodb://mongo:27017/geo_app
+      - TZ_OFFSET_MIN=330
+    depends_on:
+      - mongo
+
+  mongo:
+    image: mongo:7-jammy
+    container_name: geo-app-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+volumes:
+  mongo-data:

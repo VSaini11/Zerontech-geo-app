@@ -1,0 +1,7 @@
+<!-- ios/Runner/Info.plist (iOS needs a Mac to build; Android is the primary target) -->
+<key>NSLocationWhenInUseUsageDescription</key>
+<string>Used to show your distance to your work site.</string>
+<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+<string>Used to check you in and out automatically when you arrive at or leave your work site, even when the app is closed.</string>
+<key>UIBackgroundModes</key>
+<array><string>location</string><string>fetch</string></array>
